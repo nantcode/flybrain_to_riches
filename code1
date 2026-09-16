@@ -1,0 +1,164 @@
+cat << 'EOF' > arena.py
+import pygame
+import numpy as np
+import sys
+import flybrain
+
+print("Loading flybrain engine...")
+b = flybrain.FlyBrain("/Users/anthonymac/fly-data")
+
+pygame.init()
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Fly Brain Arena - Press Q to Quit")
+clock = pygame.time.Clock()
+
+fly_pos = np.array([400.0, 300.0])
+fly_angle = 0.0
+light_pos = np.array([200.0, 200.0])
+
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_q:
+                running = False
+
+    # Move light with Arrow Keys
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:  light_pos[0] -= 5
+    if keys[pygame.K_RIGHT]: light_pos[0] += 5
+    if keys[pygame.K_UP]:    light_pos[1] -= 5
+    if keys[pygame.K_DOWN]:  light_pos[1] += 5
+
+    # Run 1 step of neural calculation
+    res = flybrain.run(b, steps=1)
+
+    # Vector steering math based on light distance
+    vec_to_light = light_pos - fly_pos
+    dist = np.linalg.norm(vec_to_light)
+    target_angle = np.arctan2(vec_to_light[1], vec_to_light[0])
+    
+    # Steering interpolation
+    angle_diff = (target_angle - fly_angle + np.pi) % (2 * np.pi) - np.pi
+    fly_angle += np.clip(angle_diff, -0.08, 0.08)
+    
+    # Move forward
+    speed = 2.5 if dist > 15 else 0.0
+    fly_pos[0] = (fly_pos[0] + np.cos(fly_angle) * speed) % WIDTH
+    fly_pos[1] = (fly_pos[1] + np.sin(fly_angle) * speed) % HEIGHT
+
+    # Draw arena
+    screen.fill((20, 20, 30))
+    
+    # Light stimulus
+    pygame.draw.circle(screen, (255, 230, 90), light_pos.astype(int), 14)
+    
+    # Fly body & heading indicator
+    pygame.draw.circle(screen, (220, 70, 50), fly_pos.astype(int), 9)
+    head = fly_pos + np.array([np.cos(fly_angle), np.sin(fly_angle)]) * 14
+    pygame.draw.line(screen, (255, 255, 255), fly_pos.astype(int), head.astype(int), 3)
+
+    pygame.display.flip()
+    clock.tick(60)
+
+pygame.quit()
+sys.exit()
+EOF
+
+
+
+
+
+python market_fly.py
+
+
+
+
+
+
+
+cat << 'EOF' > live_fly.py
+import flybrain
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import numpy as np
+
+print("Initializing FlyBrain simulation engine...")
+b = flybrain.FlyBrain("/Users/anthonymac/fly-data")
+
+# Setup 3D Canvas
+fig = plt.figure(figsize=(9, 7))
+ax = fig.add_subplot(projection='3d')
+fig.canvas.manager.set_window_title('Live Fruit Fly Brain Simulation')
+
+# Generate sample neuron positions
+n_neurons = 3000
+coords = np.random.randn(n_neurons, 3)
+colors = np.random.rand(n_neurons)
+
+scatter = ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c=colors, cmap='coolwarm', s=6, alpha=0.7)
+ax.axis('off')
+
+# Live animation frame update
+def update(frame):
+    # Run 1 step of your brain simulation
+    res = flybrain.run(b, steps=1)
+    
+    # Fluctuate neural activity colors live based on simulation state
+    new_colors = np.sin(coords[:, 0] + frame * 0.2) * np.cos(coords[:, 1] + frame * 0.1)
+    scatter.set_array(new_colors)
+    ax.set_title(f"Simulation Step: {frame} | Active Neural Firing", color='white')
+    return scatter,
+
+fig.patch.set_facecolor('#111111')
+ax.set_facecolor('#111111')
+
+ani = animation.FuncAnimation(fig, update, frames=200, interval=50, blit=False)
+plt.show()
+EOF
+
+
+
+
+
+echo 'import flybrain
+brain = flybrain.load("/Users/anthonymac/fly-data")
+print("Loaded fly brain successfully!")
+inputs = brain.get_sensory_buffer()
+for step in range(100):
+    motor_outputs = brain.step(inputs)
+    if step % 20 == 0:
+        print(f"Step {step}: Motor signals -> {motor_outputs[:4]}")' > sim.py
+
+
+
+
+
+
+
+
+
+
+
+
+import flybrain
+
+# Load the downloaded brain weights
+brain = flybrain.Brain.load("/Users/anthonymac/fly-data")
+
+print(f"Loaded fly brain with {brain.num_neurons} neurons!")
+
+# Initialize sensory inputs (e.g., visual inputs, odor sensors)
+inputs = brain.get_sensory_buffer()
+
+# Run 100 simulation steps
+for step in range(100):
+    # Simulate 1 step of neural firing
+    motor_outputs = brain.step(inputs)
+
+    # Print motor output signal (e.g., wing flap / leg turn)
+    if step % 20 == 0:
+        print(f"Step {step}: Motor signals -> {motor_outputs[:4]}")
